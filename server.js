@@ -73,6 +73,19 @@ app.set("io", io);
 
 const PORT = process.env.PORT || 5000;
 
+// Surface port-in-use errors with a clear, actionable message instead of an
+// unhandled 'error' event crash dump.
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `Port ${PORT} is already in use. Another process (likely a previous ` +
+        `server instance) is still running. Stop it and try again.`
+    );
+    process.exit(1);
+  }
+  throw err;
+});
+
 // Connect to MongoDB, then start the server.
 const start = async () => {
   await connectDB();
