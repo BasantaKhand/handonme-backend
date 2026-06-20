@@ -33,6 +33,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    otp: {
+      type: String,
+      select: false,
+    },
+    otpExpires: {
+      type: Date,
+      select: false,
+    },
     verificationBadge: {
       type: String,
       enum: ["None", "Email", "Student", "Trusted"],
@@ -53,11 +61,10 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving when it has been modified.
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
 // Compare a plaintext password against the stored hash.
