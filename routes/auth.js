@@ -1,7 +1,7 @@
 const express = require("express");
 const { body } = require("express-validator");
 const authController = require("../controllers/authController");
-const auth = require("../middleware/auth");
+const { protect } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -18,6 +18,21 @@ router.post(
 );
 
 router.post(
+  "/verify",
+  [
+    body("email").isEmail().withMessage("Valid email is required"),
+    body("otp").notEmpty().withMessage("OTP is required"),
+  ],
+  authController.verifyOTP
+);
+
+router.post(
+  "/resend-otp",
+  [body("email").isEmail().withMessage("Valid email is required")],
+  authController.resendOTP
+);
+
+router.post(
   "/login",
   [
     body("email").isEmail().withMessage("Valid email is required"),
@@ -26,6 +41,6 @@ router.post(
   authController.login
 );
 
-router.get("/me", auth, authController.getMe);
+router.get("/me", protect, authController.getMe);
 
 module.exports = router;
