@@ -2,7 +2,32 @@ const { validationResult } = require("express-validator");
 const User = require("../models/User");
 const { generateToken, sendSuccess, sendError } = require("../utils/helpers");
 
-// Register a new user.
+// Generate a 6-digit numeric OTP as a string.
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+// OTP validity window: 10 minutes from now.
+const otpExpiry = () => new Date(Date.now() + 10 * 60 * 1000);
+
+// Log the OTP to the console for testing (no email service wired up yet).
+const logOTP = (email, otp) => {
+  console.log(`========== OTP for ${email}: ${otp} ==========`);
+};
+
+// Shape the user object returned to clients.
+const publicUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  location: user.location,
+  avatar: user.avatar,
+  isVerified: user.isVerified,
+  verificationBadge: user.verificationBadge,
+  rating: user.rating,
+  totalExchanges: user.totalExchanges,
+});
+
+// Register a new user and issue an OTP for email verification.
 exports.register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -17,29 +42,99 @@ exports.register = async (req, res) => {
       return sendError(res, 400, "User with this email already exists");
     }
 
-    const user = await User.create({ name, email, password, location });
-    const token = generateToken(user._id);
+    const otp = generateOTP();
+
+    // Password is hashed by the User model's pre-save hook (bcrypt, 10 rounds).
+    const user = await User.create({
+      name,
+      email,
+      password,
+      location,
+      otp,
+      otpExpires: otpExpiry(),
+    });
+
+    logOTP(user.email, otp);
 
     return sendSuccess(
       res,
       201,
-      {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          location: user.location,
-        },
-      },
-      "Registration successful"
+      { email: user.email },
+      "Registration successful. Please verify the OTP sent to your email."
     );
   } catch (error) {
     return sendError(res, 500, error.message);
   }
 };
 
-// Authenticate a user and return a token.
+// Verify the OTP, mark the account verified, and return an auth token.
+exports.verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email }).select("+otp +otpExpires");
+    if (!user) {
+      return sendError(res, 404, "User not found");
+    }
+
+    if (!user.otp || user.otp !== otp) {
+      return sendError(res, 400, "Invalid OTP");
+    }
+
+    if (!user.otpExpires || user.otpExpires < new Date()) {
+      return sendError(res, 400, "OTP has expired");
+    }
+
+    user.isVerified = true;
+    user.verificationBadge = "Email";
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    const token = generateToken(user._id);
+    return sendSuccess(
+      res,
+      200,
+      { token, user: publicUser(user) },
+      "Account verified successfully"
+    );
+  } catch (error) {
+    return sendError(res, 500, error.message);
+  }
+};
+
+// Issue a fresh OTP for an unverified account.
+exports.resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return sendError(res, 404, "User not found");
+    }
+
+    if (user.isVerified) {
+      return sendError(res, 400, "Account is already verified");
+    }
+
+    const otp = generateOTP();
+    user.otp = otp;
+    user.otpExpires = otpExpiry();
+    await user.save();
+    logOTP(user.email, otp);
+
+    return sendSuccess(
+      res,
+      200,
+      { email: user.email },
+      "A new OTP has been sent to your email."
+    );
+  } catch (error) {
+    return sendError(res, 500, error.message);
+  }
+};
+
+// Authenticate a user. Unverified accounts get a fresh OTP instead of a token.
 exports.login = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -59,19 +154,26 @@ exports.login = async (req, res) => {
       return sendError(res, 401, "Invalid credentials");
     }
 
+    if (!user.isVerified) {
+      const otp = generateOTP();
+      user.otp = otp;
+      user.otpExpires = otpExpiry();
+      await user.save();
+      logOTP(user.email, otp);
+
+      return res.status(403).json({
+        success: false,
+        needsVerification: true,
+        email: user.email,
+        message: "Account not verified. A new OTP has been sent to your email.",
+      });
+    }
+
     const token = generateToken(user._id);
     return sendSuccess(
       res,
       200,
-      {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          location: user.location,
-        },
-      },
+      { token, user: publicUser(user) },
       "Login successful"
     );
   } catch (error) {
@@ -79,12 +181,10 @@ exports.login = async (req, res) => {
   }
 };
 
-// Return the currently authenticated user.
+// Return the currently authenticated user (attached by protect middleware).
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return sendError(res, 404, "User not found");
-    return sendSuccess(res, 200, user);
+    return sendSuccess(res, 200, publicUser(req.user));
   } catch (error) {
     return sendError(res, 500, error.message);
   }
