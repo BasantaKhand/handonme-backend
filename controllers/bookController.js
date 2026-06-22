@@ -39,7 +39,10 @@ exports.getBooks = async (req, res) => {
     }
 
     const books = await Book.find(filter)
-      .populate("seller", "name rating location")
+      .populate(
+        "seller",
+        "name rating location verificationBadge totalExchanges"
+      )
       .sort({ createdAt: -1 });
     return sendSuccess(res, 200, books);
   } catch (error) {
@@ -54,7 +57,10 @@ exports.getBookById = async (req, res) => {
       req.params.id,
       { $inc: { views: 1 } },
       { new: true }
-    ).populate("seller", "name rating location");
+    ).populate(
+      "seller",
+      "name rating location verificationBadge totalExchanges"
+    );
     if (!book) return sendError(res, 404, "Book not found");
     return sendSuccess(res, 200, book);
   } catch (error) {
