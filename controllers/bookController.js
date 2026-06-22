@@ -19,15 +19,30 @@ exports.createBook = async (req, res) => {
 // List all books with optional filters.
 exports.getBooks = async (req, res) => {
   try {
-    const { subject, condition, exchangeType, status } = req.query;
+    const { subject, condition, exchangeType, status, seller, search } =
+      req.query;
     const filter = {};
     if (subject) filter.subject = subject;
     if (condition) filter.condition = condition;
     if (exchangeType) filter.exchangeType = exchangeType;
     if (status) filter.status = status;
+    if (seller) filter.seller = seller;
+
+    // Free-text search across title, author, and subject. The term is escaped
+    // so user input is treated as a literal substring (no regex injection).
+    if (search) {
+      const escaped = String(search)
+        .trim()
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const term = new RegExp(escaped, "i");
+      filter.$or = [{ title: term }, { author: term }, { subject: term }];
+    }
 
     const books = await Book.find(filter)
-      .populate("seller", "name rating location")
+      .populate(
+        "seller",
+        "name rating location verificationBadge totalExchanges"
+      )
       .sort({ createdAt: -1 });
     return sendSuccess(res, 200, books);
   } catch (error) {
@@ -42,7 +57,10 @@ exports.getBookById = async (req, res) => {
       req.params.id,
       { $inc: { views: 1 } },
       { new: true }
-    ).populate("seller", "name rating location");
+    ).populate(
+      "seller",
+      "name rating location verificationBadge totalExchanges"
+    );
     if (!book) return sendError(res, 404, "Book not found");
     return sendSuccess(res, 200, book);
   } catch (error) {
