@@ -19,12 +19,24 @@ exports.createBook = async (req, res) => {
 // List all books with optional filters.
 exports.getBooks = async (req, res) => {
   try {
-    const { subject, condition, exchangeType, status } = req.query;
+    const { subject, condition, exchangeType, status, seller, search } =
+      req.query;
     const filter = {};
     if (subject) filter.subject = subject;
     if (condition) filter.condition = condition;
     if (exchangeType) filter.exchangeType = exchangeType;
     if (status) filter.status = status;
+    if (seller) filter.seller = seller;
+
+    // Free-text search across title, author, and subject. The term is escaped
+    // so user input is treated as a literal substring (no regex injection).
+    if (search) {
+      const escaped = String(search)
+        .trim()
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const term = new RegExp(escaped, "i");
+      filter.$or = [{ title: term }, { author: term }, { subject: term }];
+    }
 
     const books = await Book.find(filter)
       .populate("seller", "name rating location")
