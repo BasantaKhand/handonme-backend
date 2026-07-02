@@ -2,8 +2,8 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// Ensure the uploads directory exists.
-const uploadDir = path.join(__dirname, "..", "uploads");
+// Ensure the uploads directory for book photos exists.
+const uploadDir = path.join(__dirname, "..", "uploads", "books");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -32,7 +32,10 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB per file
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB per file
+    files: 5, // max 5 files per upload
+  },
 });
 
 module.exports = upload;
