@@ -17,6 +17,22 @@ const messageSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Distinguishes plain chat from structured offers/meetup proposals/system.
+    messageType: {
+      type: String,
+      enum: ["text", "offer", "meetup_proposal", "system"],
+      default: "text",
+    },
+    // Present when messageType === "offer" (a counter-offer amount).
+    offer: {
+      amount: { type: Number },
+    },
+    // Present when messageType === "meetup_proposal".
+    meetup: {
+      date: { type: Date },
+      time: { type: String },
+      location: { type: String },
+    },
     read: {
       type: Boolean,
       default: false,
