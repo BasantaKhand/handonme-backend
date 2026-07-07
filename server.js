@@ -48,19 +48,20 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
-  // Join a specific chat room.
+  // Join / leave a specific chat room.
   socket.on("joinChat", (chatId) => {
     socket.join(chatId);
   });
-
-  // Broadcast a message to everyone in the chat room.
-  socket.on("sendMessage", ({ chatId, message }) => {
-    io.to(chatId).emit("newMessage", message);
+  socket.on("leaveChat", (chatId) => {
+    socket.leave(chatId);
   });
 
-  // Typing indicator.
+  // Typing indicators, broadcast to the other participant(s) in the room.
   socket.on("typing", ({ chatId, user }) => {
     socket.to(chatId).emit("typing", { user });
+  });
+  socket.on("stopTyping", ({ chatId, user }) => {
+    socket.to(chatId).emit("stopTyping", { user });
   });
 
   socket.on("disconnect", () => {
