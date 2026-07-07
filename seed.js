@@ -160,7 +160,9 @@ async function seed() {
       sender: partners[i]._id,
       content: previews[i],
     });
-    chat.lastMessage = msg._id;
+    // Chat.lastMessage stores a preview string plus the activity timestamp.
+    chat.lastMessage = msg.content;
+    chat.lastMessageAt = msg.createdAt;
     await chat.save();
   }
 
