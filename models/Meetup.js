@@ -2,38 +2,53 @@ const mongoose = require("mongoose");
 
 const meetupSchema = new mongoose.Schema(
   {
+    chat: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Chat",
+      required: true,
+    },
     book: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Book",
-      required: true,
     },
-    buyer: {
+    proposedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    seller: {
+    proposedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    date: {
+      type: Date,
+      required: true,
+    },
+    time: {
+      type: String,
     },
     location: {
       type: String,
       required: true,
     },
-    coordinates: {
-      lat: { type: Number },
-      lng: { type: Number },
-    },
-    scheduledAt: {
-      type: Date,
-      required: true,
+    // True when the location was chosen from the suggested safe spots.
+    safeSpot: {
+      type: Boolean,
+      default: false,
     },
     status: {
       type: String,
-      enum: ["Pending", "Confirmed", "Completed", "Cancelled"],
-      default: "Pending",
+      enum: ["proposed", "confirmed", "completed", "cancelled"],
+      default: "proposed",
     },
+    // Users who have marked the exchange complete (both required to finish).
+    completedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );
