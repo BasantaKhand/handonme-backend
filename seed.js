@@ -19,6 +19,20 @@ const Book = require("./models/Book");
 const Chat = require("./models/Chat");
 const Message = require("./models/Message");
 const Review = require("./models/Review");
+const SafeSpot = require("./models/SafeSpot");
+
+// Suggested safe meetup locations by city.
+const SAFE_SPOTS = [
+  { name: "TU Campus Gate", city: "Kathmandu", type: "campus", address: "Kirtipur" },
+  { name: "Ratna Park", city: "Kathmandu", type: "public", address: "Ratna Park" },
+  { name: "Bhatbhateni Supermarket", city: "Kathmandu", type: "public", address: "Maharajgunj" },
+  { name: "Patan Durbar Square", city: "Lalitpur", type: "public", address: "Patan" },
+  { name: "Pulchowk Campus Gate", city: "Lalitpur", type: "campus", address: "Pulchowk" },
+  { name: "Lakeside Public Library", city: "Pokhara", type: "library", address: "Lakeside" },
+  { name: "Prithvi Chowk", city: "Pokhara", type: "public", address: "Prithvi Chowk" },
+  { name: "Durbar Square", city: "Bhaktapur", type: "public", address: "Bhaktapur" },
+  { name: "Local Library", city: "Bhaktapur", type: "library", address: "Bhaktapur" },
+];
 
 const CITIES = ["Kathmandu", "Lalitpur", "Bhaktapur", "Pokhara"];
 const CONDITIONS = ["Like New", "Good", "Fair", "Worn"];
@@ -96,6 +110,7 @@ async function seed() {
     Chat.deleteMany({}),
     Message.deleteMany({}),
     Review.deleteMany({}),
+    SafeSpot.deleteMany({}),
   ]);
 
   // Create users (User.create runs the pre-save hook so passwords are hashed).
@@ -185,10 +200,15 @@ async function seed() {
     });
   }
 
+  // Safe meetup spots.
+  console.log("Creating safe spots...");
+  await SafeSpot.insertMany(SAFE_SPOTS);
+
   console.log("\n✅ Seed complete");
-  console.log(`   Users:   ${users.length}`);
-  console.log(`   Books:   ${books.length}`);
-  console.log(`   Chats:   ${partners.length}`);
+  console.log(`   Users:      ${users.length}`);
+  console.log(`   Books:      ${books.length}`);
+  console.log(`   Chats:      ${partners.length}`);
+  console.log(`   SafeSpots:  ${SAFE_SPOTS.length}`);
   console.log("\n   Demo login →  basanta@example.com  /  password123\n");
 
   await mongoose.disconnect();
