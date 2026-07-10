@@ -16,6 +16,11 @@ const reviewSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Book",
     },
+    // The completed meetup this review is tied to (one review per meetup/user).
+    meetup: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meetup",
+    },
     rating: {
       type: Number,
       required: true,
