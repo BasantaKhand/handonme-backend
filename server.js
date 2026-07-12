@@ -15,6 +15,7 @@ const userRoutes = require("./routes/users");
 const chatRoutes = require("./routes/chats");
 const reviewRoutes = require("./routes/reviews");
 const meetupRoutes = require("./routes/meetups");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +42,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/meetups", meetupRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Socket.io setup for real-time messaging
 const io = new Server(server, {
@@ -49,6 +51,11 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
+
+  // Join a personal room so the user can receive their notifications.
+  socket.on("joinUser", (userId) => {
+    if (userId) socket.join(`user:${userId}`);
+  });
 
   // Join / leave a specific chat room.
   socket.on("joinChat", (chatId) => {
