@@ -56,6 +56,13 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Books the user has saved for later.
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Book",
+      },
+    ],
   },
   { timestamps: true }
 );
