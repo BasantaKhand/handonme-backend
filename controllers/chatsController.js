@@ -1,6 +1,7 @@
 const Chat = require("../models/Chat");
 const Message = require("../models/Message");
 const { sendSuccess, sendError } = require("../utils/helpers");
+const { createNotification } = require("../utils/notify");
 
 const PARTICIPANT_FIELDS = "name avatar isVerified rating";
 const BOOK_FIELDS = "title price photos";
@@ -137,6 +138,21 @@ exports.sendMessage = async (req, res) => {
     if (io) {
       io.to(chat._id.toString()).emit("newMessage", message);
     }
+
+    // Notify the other participant(s) about the new message.
+    const senderName = message.sender?.name || "Someone";
+    chat.participants
+      .filter((p) => p.toString() !== req.user.id)
+      .forEach((recipient) =>
+        createNotification(io, {
+          user: recipient,
+          type: "new_message",
+          title: `New message from ${senderName}`,
+          message: previewFor(message),
+          link: `/chat?chat=${chat._id}`,
+          relatedChat: chat._id,
+        })
+      );
 
     return sendSuccess(res, 201, message, "Message sent");
   } catch (error) {
