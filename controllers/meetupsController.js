@@ -4,6 +4,7 @@ const Book = require("../models/Book");
 const Message = require("../models/Message");
 const SafeSpot = require("../models/SafeSpot");
 const { sendSuccess, sendError } = require("../utils/helpers");
+const { createNotification } = require("../utils/notify");
 
 // Post a system message into a chat and refresh its preview, then broadcast it.
 const postSystemMessage = async (req, chatId, content) => {
@@ -58,6 +59,16 @@ exports.proposeMeetup = async (req, res) => {
       `Meetup proposed for ${when}${time ? ` at ${time}` : ""} · ${location}`
     );
 
+    createNotification(req.app.get("io"), {
+      user: proposedTo,
+      type: "meetup_proposed",
+      title: "New meetup proposed",
+      message: `${when}${time ? ` at ${time}` : ""} · ${location}`,
+      link: `/chat?chat=${chat._id}`,
+      relatedChat: chat._id,
+      relatedMeetup: meetup._id,
+    });
+
     return sendSuccess(res, 201, meetup, "Meetup proposed");
   } catch (error) {
     return sendError(res, 500, error.message);
@@ -88,6 +99,18 @@ exports.respondToMeetup = async (req, res) => {
         ? "Meetup confirmed ✅"
         : "Meetup cancelled ❌"
     );
+
+    if (action === "confirm") {
+      createNotification(req.app.get("io"), {
+        user: meetup.proposedBy,
+        type: "meetup_confirmed",
+        title: "Meetup confirmed",
+        message: "Your proposed meetup was confirmed.",
+        link: `/chat?chat=${meetup.chat}`,
+        relatedChat: meetup.chat,
+        relatedMeetup: meetup._id,
+      });
+    }
 
     return sendSuccess(res, 200, meetup, `Meetup ${meetup.status}`);
   } catch (error) {
@@ -131,6 +154,21 @@ exports.markComplete = async (req, res) => {
         ? "Exchange completed 🎉 — leave a review!"
         : "One party marked the exchange complete. Waiting on the other."
     );
+
+    if (bothDone) {
+      const io = req.app.get("io");
+      [meetup.proposedBy, meetup.proposedTo].forEach((u) =>
+        createNotification(io, {
+          user: u,
+          type: "exchange_complete",
+          title: "Exchange complete 🎉",
+          message: "Your exchange is complete. Leave a review!",
+          link: `/chat?chat=${meetup.chat}`,
+          relatedChat: meetup.chat,
+          relatedMeetup: meetup._id,
+        })
+      );
+    }
 
     return sendSuccess(res, 200, meetup, "Marked complete");
   } catch (error) {
