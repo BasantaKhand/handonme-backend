@@ -2,6 +2,7 @@ const Review = require("../models/Review");
 const Meetup = require("../models/Meetup");
 const User = require("../models/User");
 const { sendSuccess, sendError } = require("../utils/helpers");
+const { createNotification } = require("../utils/notify");
 
 // POST /api/reviews — review the other party after a completed meetup.
 exports.createReview = async (req, res) => {
@@ -47,6 +48,14 @@ exports.createReview = async (req, res) => {
     await User.findByIdAndUpdate(reviewedUser, {
       rating: Math.round(avg * 10) / 10,
       totalExchanges,
+    });
+
+    createNotification(req.app.get("io"), {
+      user: reviewedUser,
+      type: "new_review",
+      title: "You received a new review",
+      message: `${rating}★${comment ? ` · "${comment}"` : ""}`,
+      link: `/dashboard#exchange-history`,
     });
 
     return sendSuccess(res, 201, review, "Review submitted");
