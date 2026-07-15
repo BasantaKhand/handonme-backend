@@ -4,7 +4,8 @@ const { sendSuccess, sendError } = require("../utils/helpers");
 const { createNotification } = require("../utils/notify");
 
 const PARTICIPANT_FIELDS = "name avatar isVerified rating";
-const BOOK_FIELDS = "title price photos";
+// `seller` lets the client tell buyer from seller (e.g. to show quick replies).
+const BOOK_FIELDS = "title price photos seller exchangeType";
 
 // True if the given user id is one of the chat's participants.
 const isParticipant = (chat, userId) =>
@@ -22,6 +23,21 @@ const previewFor = (message) => {
     return "📍 Meetup proposal";
   }
   return message.content;
+};
+
+// GET /api/chats/unread-count — number of unread messages addressed to the user.
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const chatIds = await Chat.find({ participants: req.user.id }).distinct("_id");
+    const count = await Message.countDocuments({
+      chat: { $in: chatIds },
+      sender: { $ne: req.user.id },
+      read: false,
+    });
+    return sendSuccess(res, 200, { count });
+  } catch (error) {
+    return sendError(res, 500, error.message);
+  }
 };
 
 // GET /api/chats — all chats for the authenticated user, newest activity first.
