@@ -176,6 +176,24 @@ exports.markComplete = async (req, res) => {
   }
 };
 
+// GET /api/meetups/chat/:chatId — the latest meetup for a chat (participants only).
+exports.getChatMeetup = async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.chatId);
+    if (!chat) return sendError(res, 404, "Chat not found");
+    const participantIds = chat.participants.map((p) => p.toString());
+    if (!participantIds.includes(req.user.id)) {
+      return sendError(res, 403, "Not a participant of this chat");
+    }
+    const meetup = await Meetup.findOne({ chat: chat._id }).sort({
+      createdAt: -1,
+    });
+    return sendSuccess(res, 200, meetup); // may be null when none proposed yet
+  } catch (error) {
+    return sendError(res, 500, error.message);
+  }
+};
+
 // GET /api/meetups/safe-spots?city= — suggested safe meetup locations.
 exports.getSafeSpots = async (req, res) => {
   try {
