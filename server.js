@@ -104,6 +104,10 @@ const start = async () => {
   });
 };
 
-start();
+// Skip auto-start under tests — tests import `app` and manage their own
+// in-memory database and lifecycle.
+if (process.env.NODE_ENV !== "test") {
+  start();
+}
 
 module.exports = { app, server, io };
