@@ -1,6 +1,7 @@
 const { validationResult } = require("express-validator");
 const User = require("../models/User");
 const { generateToken, sendSuccess, sendError } = require("../utils/helpers");
+const { sendOTPEmail } = require("../utils/email");
 
 // Generate a 6-digit numeric OTP as a string.
 const generateOTP = () =>
@@ -9,9 +10,20 @@ const generateOTP = () =>
 // OTP validity window: 10 minutes from now.
 const otpExpiry = () => new Date(Date.now() + 10 * 60 * 1000);
 
-// Log the OTP to the console for testing (no email service wired up yet).
+// Log the OTP to the console for testing/visibility.
 const logOTP = (email, otp) => {
   console.log(`========== OTP for ${email}: ${otp} ==========`);
+};
+
+// Deliver the OTP: always log it, then attempt to send a real email. Email
+// failures are logged but never break the flow (registration still succeeds).
+const deliverOTP = async (email, otp) => {
+  logOTP(email, otp);
+  try {
+    await sendOTPEmail(email, otp);
+  } catch (error) {
+    console.error(`Failed to send OTP email to ${email}: ${error.message}`);
+  }
 };
 
 // Shape the user object returned to clients.
@@ -54,7 +66,7 @@ exports.register = async (req, res) => {
       otpExpires: otpExpiry(),
     });
 
-    logOTP(user.email, otp);
+    await deliverOTP(user.email, otp);
 
     return sendSuccess(
       res,
@@ -121,7 +133,7 @@ exports.resendOTP = async (req, res) => {
     user.otp = otp;
     user.otpExpires = otpExpiry();
     await user.save();
-    logOTP(user.email, otp);
+    await deliverOTP(user.email, otp);
 
     return sendSuccess(
       res,
@@ -159,7 +171,7 @@ exports.login = async (req, res) => {
       user.otp = otp;
       user.otpExpires = otpExpiry();
       await user.save();
-      logOTP(user.email, otp);
+      await deliverOTP(user.email, otp);
 
       return res.status(403).json({
         success: false,
